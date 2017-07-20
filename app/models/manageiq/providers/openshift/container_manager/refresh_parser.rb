@@ -8,7 +8,7 @@ module ManageIQ::Providers
         get_builds(inventory)
         get_build_pods(inventory)
         get_templates(inventory)
-        get_or_merge_openshift_images(inventory) if options.get_container_images
+        get_or_merge_openshift_images(inventory, options)
         EmsRefresh.log_inv_debug_trace(@data, "data:")
 
         # Returning a hash triggers save_inventory_container code path.
@@ -33,13 +33,17 @@ module ManageIQ::Providers
         get_build_pods_graph(inventory)
         get_templates_graph(inventory)
         # For now, we're reusing @data_index-reading-and-writing code path for images.
-        get_or_merge_openshift_images(inventory) if options.get_container_images
+        get_or_merge_openshift_images(inventory, options)
       end
 
       ## hashes -> save_inventory_container methods
 
-      def get_or_merge_openshift_images(inventory)
-        inventory["image"].each { |img| get_or_merge_openshift_image(img) }
+      def get_or_merge_openshift_images(inventory, options)
+        if options.get_container_images
+          inventory["image"].each { |img| get_or_merge_openshift_image(img) }
+        else
+          preserve_openshift_image_tags
+        end
       end
 
       def get_or_merge_openshift_image(openshift_image)
@@ -49,6 +53,16 @@ module ManageIQ::Providers
                                                  openshift_result.delete(:ref))
         container_result.merge!(openshift_result)
         container_result
+      end
+
+      # tag column is set by kubernetes parser, overridden by
+      # parse_openshift_image if get_container_images=true.  So when
+      # get_container_images=false we don't want to "degrade" it, we'd
+      # rather not touch it.
+      def preserve_openshift_image_tags
+        @data_index.fetch_path(:container_image, :by_digest).values.each do |h|
+          h.delete(:tag)
+        end
       end
 
       def get_builds(inventory)
