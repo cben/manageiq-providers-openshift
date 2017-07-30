@@ -32,15 +32,19 @@ def log(msg):
         print >>sys.stderr, "memusg: {}".format(msg)
 
 def get_vsize(sid):
-    vsize = 0
+    sum_vsize = 0
     # Example: /bin/ps -o vsize= --sid 23928
-    proc = Popen(['ps', '-o', 'rssize=', '--sid', str(sid)], stdout=PIPE, stderr=None, shell=False)
+    proc = Popen(['ps', '-o', 'pid=,vsize=,rssize=,cmd=', '--sid', str(sid)], stdout=PIPE, stderr=None, shell=False)
     (stdout, _stderr) = proc.communicate()
     # Iterate over each process within the process tree of our process session
     # (this ensures that we include processes launched by a child bash script, etc.)
-    for line in stdout.split():
-        vsize += int(line.strip())
-    return vsize
+    mypid = os.getpid()
+    for line in stdout.splitlines():
+        log(line)
+        pid, vsize, rssize, cmd = line.split(None, 3)
+        if int(pid) != mypid:
+            sum_vsize += int(rssize.strip())
+    return sum_vsize
 
 # Create a new process session for this process so that we can
 # easily calculate the memory usage of the whole process tree using ps
@@ -75,7 +79,7 @@ if fork_pid == 0:
         log("Waiting for child to exit. vmpeak={}".format(vmpeak))
         proc.poll()
         sleep(0.1) # Time in seconds (float)
-    
+
     out.write("memusg: vmpeak: {} kb\n".format(vmpeak))
 
     status = proc.returncode
@@ -89,4 +93,3 @@ else:
     log("Fork returned {}".format(status))
     out.close()
     sys.exit(status)
-
