@@ -117,15 +117,15 @@ shared_examples "openshift refresher VCR tests" do
     let(:object_counts) do
       # using strings instead of actual model classes for compact rspec diffs
       {
-        'ContainerProject'           => 11,
-        'ContainerImage'             => 41,
-        'ContainerRoute'             => 3,
-        'ContainerTemplate'          => 17,
-        'ContainerTemplateParameter' => 171,
-        'ContainerReplicator'        => 5,
+        'ContainerProject'           => 10,
+        'ContainerImage'             => 43,
+        'ContainerRoute'             => 4,
+        'ContainerTemplate'          => 20,
+        'ContainerTemplateParameter' => 210,
+        'ContainerReplicator'        => 8,
         'ContainerBuild'             => 3,
         'ContainerBuildPod'          => 3,
-        'CustomAttribute'            => 594,
+        'CustomAttribute'            => 622,
       }
     end
 
@@ -171,7 +171,9 @@ shared_examples "openshift refresher VCR tests" do
         expect(ContainerProject.active.count).to eq(object_counts['ContainerProject'] - 1)
         expect(ContainerProject.archived.count).to eq(1)
 
-        pending("why graph refresh DELETES 1 image from DB? why old refresh archives 2?")
+        # TODO: this varies by recording, in this recording only graph refresh has problem,
+        # in some classical refresh had same problem, in some graph refresh archived 2 images...
+        pending("why graph refresh DELETES 1 image from DB?") if Settings.ems_refresh.openshift.inventory_object_refresh
         expect(ContainerImage.count).to eq(object_counts['ContainerImage'])
         expect(ContainerImage.active.count).to eq(object_counts['ContainerImage'] - 1)
         expect(ContainerImage.archived.count).to eq(1)
